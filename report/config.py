@@ -24,6 +24,17 @@ def normalize_repo(value: str) -> str:
     return str(value).replace("\\", "/").strip("/")
 
 
+def is_under(parent: str, child: str) -> bool:
+    """child 가 parent 자신이거나 parent 아래(경로 세그먼트 경계 기준)에 있는지.
+
+    양쪽 다 normalize_repo 로 정규화한 뒤 비교한다. 예를 들어 a/b 는
+    a/bc 를 덮지 않는다 — 세그먼트 경계(/) 없이 문자열만 접두하면 안 된다.
+    """
+    p = normalize_repo(parent)
+    c = normalize_repo(child)
+    return c == p or c.startswith(p + "/")
+
+
 @dataclass(frozen=True)
 class Category:
     name: str
@@ -61,11 +72,10 @@ class Config:
         — 정확 일치는 항상 자신보다 짧은 프리픽스보다 길므로 자동으로
         우선한다.
         """
-        q = normalize_repo(repo)
         best_name: str | None = None
         best_len = -1
         for p, name in self._by_repo.items():
-            if q == p or q.startswith(p + "/"):
+            if is_under(p, repo):
                 if len(p) > best_len:
                     best_len = len(p)
                     best_name = name

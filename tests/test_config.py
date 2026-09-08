@@ -2,7 +2,7 @@
 """config.yaml 로딩·검증 테스트."""
 import pytest
 
-from report.config import Config, ConfigError, load_config
+from report.config import Config, ConfigError, is_under, load_config
 
 SAMPLE = """\
 me:
@@ -160,3 +160,23 @@ def test_가장_긴_프리픽스가_이긴다(tmp_path):
 def test_매칭되는_구분이_없으면_None(tmp_path):
     cfg = load_config(write(tmp_path, SAMPLE_PREFIX))
     assert cfg.category_for_repo("golfzone/admin") is None
+
+
+# --- is_under: category_for_repo 가 위임하는 경계 판정 함수 자체를 검증 ---
+
+
+def test_is_under_정확_일치():
+    assert is_under("qmeet/front", "qmeet/front") is True
+
+
+def test_is_under_세그먼트_경계_없으면_False():
+    # a/b 는 a/bc 를 덮지 않는다 — 문자열 접두만으로는 안 된다
+    assert is_under("a/b", "a/bc") is False
+
+
+def test_is_under_하위_경로는_True():
+    assert is_under("qmeet/front", "qmeet/front/cypress-example-kitchensink") is True
+
+
+def test_is_under_경로_구분자를_정규화한다():
+    assert is_under(r"qmeet\front", "qmeet/front/sub") is True
