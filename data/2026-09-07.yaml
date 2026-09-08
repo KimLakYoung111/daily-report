@@ -1,0 +1,75 @@
+# 2026-09-07 일일보고 데이터.
+# 근거: 각 저장소 커밋 로그 + 세션 기록.
+# 미커밋 작업은 과거 날짜라 복원할 수 없다 (스펙 「한계」).
+date: 2026.9.07
+rows:
+  - category: 백엔드 공수산정
+    default_location: { repo: qmeet/backend2, branch: feature/ai_effortEstimate_20260901 }
+    items:
+      - task: 진행 단계(substage) 계약 정의·문서 반영
+        progress: 100%
+        note: 가짜 AI 서버로 중계 확인
+
+  - category: 프론트 공수산정
+    default_location: { repo: qmeet/front, branch: feature-ai-effortEsttimate_20260901 }
+    items:
+      - task: 진행 화면 substage 칩 연동
+        progress: 100%
+        note: AI 서버 2026-09-06 변경 반영
+      - task: 모바일에서 헤더가 팝업을 덮는 문제 수정
+        progress: 100%
+        note: 리뷰 8번
+      - task: 실제 기획서(11장) 진행 화면 E2E 완주
+        progress: 100%
+        note: substage 칩 동작 확인
+      - task: 프론트 연동 가이드 현황표 갱신
+        progress: 100%
+
+  - category: AI 서버 공수산정
+    default_location: { repo: qmeet/qmeet_ai, branch: feature/orchestrator }
+    items:
+      - task: 기획서 영구 보관 정책·S3 보안 방안 검토
+        progress: 100%
+        note: 정책 검토(코드 변경 없음)
+      - task: 산정 결과값(totMd·dsgnMd·expDayCnt) 로직 파악
+        progress: 100%
+        note: 정책 검토(코드 변경 없음)
+
+  - category: 시안
+    default_location: { repo: qmeet/front_design_prototype, branch: main }
+    items:
+      - task: 공수산정 진입 화면 시안 K·L·M·N 재설계
+        progress: 100%
+        note: 벤치마크 레이아웃 3종 · 입력→출력 대조
+      - task: 공수산정 PRD·프로젝트 등록 개선 3단계 PRD 작성
+        progress: 100%
+      - task: 한글 파일명에서 프리커밋 훅이 죽던 문제 수정
+        progress: 100%
+        note: css-guard
+      - task: 폐기 시안 2건·문구변경요청 양식 2건 정리
+        progress: 100%
+
+  - category: GA4
+    default_location: { repo: qmeet/backend2, branch: feature/ai_effortEstimate_20260901 }
+    items:
+      - task: GA4 회원가입 이벤트 연동
+        progress: 60%
+        note: (not set) 원인 규명 · 운영 전용 전송 가드 검증
+        locations:
+          - { repo: qmeet/backend2, branch: feature/ai_effortEstimate_20260901 }
+          - { repo: qmeet/front, branch: feature-ai-effortEsttimate_20260901 }
+
+  - category: 자동화
+    default_location: { repo: e2etest/playwright_base, branch: main }
+    items:
+      - task: 자동화 Base 템플릿 저장소 구축
+        progress: 100%
+        note: 껍데기만 유지 · 실제 자동화는 별도 저장소
+      - task: 오래된 artifacts 실행 폴더 자동 정리 기능
+        progress: 100%
+      - task: 자동화 개발자용 스크립트 작성 가이드 작성
+        progress: 100%
+      - task: Claude 협업 가이드(9장)·규칙 문서 추가
+        progress: 100%
+      - task: 브랜치 정리 · Claude 단독 자동화 실증
+        progress: 100%

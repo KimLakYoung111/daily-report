@@ -35,9 +35,25 @@ def _has_activity(row: RepoEvidence) -> bool:
     return bool(row.commits or row.uncommitted or row.event_count)
 
 
-def active_repos(rows: Sequence[RepoEvidence]) -> list[str]:
-    """활동이 있었던 저장소만. build_report 의 커버리지 경고가 이걸 쓴다."""
-    return [r.repo for r in rows if _has_activity(r)]
+def active_repos(rows: Sequence[RepoEvidence], is_past: bool) -> list[str]:
+    """`data/*.yaml`에 옮겨졌어야 할 저장소만. build_report 의 커버리지 경고가 이걸 쓴다.
+
+    `_has_activity`(근거 마크다운에 절을 렌더할지)와는 다른 질문이다.
+    미커밋 여부는 git status — 즉 수집 시점 상태 — 라서 과거 날짜를 말해줄 수
+    없다. 그래서 과거 날짜는 미커밋만으로는 활동으로 안 친다. 세션 이벤트만
+    있고 커밋도 남은 프롬프트도 없으면(예: /compact 만 찍힌 세션) 사람이
+    시킨 일이 없었다는 뜻이므로 오늘이든 과거든 활동이 아니다.
+    """
+    def is_active(r: RepoEvidence) -> bool:
+        if r.commits:
+            return True
+        if r.prompts:
+            return True
+        if r.uncommitted and not is_past:
+            return True
+        return False
+
+    return [r.repo for r in rows if is_active(r)]
 
 
 def render(

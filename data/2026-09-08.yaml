@@ -1,0 +1,91 @@
+# 2026-09-08 일일보고 데이터.
+# 근거: output/evidence/2026-09-08.md (커밋·미커밋·인계 문서·세션)
+date: 2026.9.08
+rows:
+  - category: 백엔드 공수산정
+    default_location: { repo: qmeet/backend2, branch: feature/ai_effortEstimate_20260901 }
+    items:
+      - task: AI 추천 테스트 환경(RCMD_PLTF_CD) 저장
+        progress: 100%
+      - task: API 문서 공수 기준 정정(환경 1종)
+        progress: 100%
+
+  - category: 프론트 공수산정
+    default_location: { repo: qmeet/front, branch: feature-ai-effortEsttimate_20260901 }
+    items:
+      - task: 결과 화면 AI 추천 테스트 환경 기본 선택
+        progress: 100%
+      - task: 결과 화면 인원·환경 수 즉시 재계산
+        progress: 100%
+      - task: 9/8 이전 산정 건 기존 값 유지 가드
+        progress: 100%
+      - task: 결과 배너 공수 숫자 애니메이션
+        progress: 100%
+      - task: 실제 기획서(11장) 결과 계산식 E2E 검증
+        progress: 100%
+        note: TC 172건·3분 10초·오류 0
+
+  - category: AI 서버 공수산정
+    default_location: { repo: qmeet/qmeet_ai, branch: feature/orchestrator }
+    items:
+      - task: 기획서 기준 테스트 환경 판정 후 큐밋 전달
+        progress: 100%
+      - task: 판정 환경 1종 기준으로 공수 산정
+        progress: 100%
+        note: 견적 약 3배 과다 산출 수정
+      - task: 진행 화면 단계 표시 역행 수정
+        progress: 100%
+        note: 9곳 → 0곳
+      - task: 추천 환경 값 견적 경로 누락 수정
+        progress: 100%
+        note: 실제 AI 재검증 대기
+
+  - category: 시안
+    default_location: { repo: qmeet/front_design_prototype, branch: main }
+    items:
+      - task: 결과 화면 테스트 플랫폼 시안 수정
+        progress: 100%
+        note: 체크박스 제거 → 12항목 개수 스테퍼
+
+  - category: 인프라
+    default_location: { repo: qmeet/qmeet-dev-ssh, branch: main }
+    items:
+      - task: v369 고정 버전 개발환경 구축
+        progress: 100%
+        note: v369.dev.l-walk.com 개통·결함 6건 수정
+
+  - category: 자동화
+    default_location: { repo: e2etest/qmeet, branch: main }
+    items:
+      - task: 프로젝트 등록 TC 명세 작성(QM101~106)
+        progress: 80%
+        note: QM103 검증 대상 확정 대기
+      - task: 프로젝트 등록 자동화 구현(QM101·102·104~106)
+        progress: 100%
+        note: 테스트 11건 전체 통과 · 커밋 대기
+      - task: 로그인 공통 처리·화면 모듈 2종 구현
+        progress: 100%
+        note: 프로젝트명 칸 data-cy 개발팀 요청 필요
+      - task: 실패 증적(Evidence) 수집 검증
+        progress: 100%
+        note: 의도적 실패 TC로 확인
+      - task: Base 예제 테스트 정리
+        progress: 100%
+        note: 11건·895줄 삭제, 전체 통과
+      - task: TC 입력 양식 제정
+        progress: 100%
+        note: 양식 2종(문서·엑셀)
+        locations:
+          - { repo: e2etest/playwright_base, branch: main }
+          - { repo: e2etest/qmeet, branch: main }
+      - task: Q-Meet 데모 프로젝트 영구 위치 이전
+        progress: 100%
+
+  - category: 교육
+    default_location:
+      repo: leadwalk_study/2026/second-half-automation-training/repos
+      branch: git 아님 · 교육생 5명 폴더
+    items:
+      - task: 하반기 자동화 교육 4주차 과제 피드백
+        progress: 100%
+        note: 5명 전원 전달 완료

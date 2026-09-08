@@ -89,7 +89,7 @@ def main() -> int:
     json_path = OUT_DIR / "{}.repos.json".format(day.isoformat())
     md_path.write_text(text, encoding="utf-8")
     json_path.write_text(
-        json.dumps(active_repos(rows), ensure_ascii=False, indent=2),
+        json.dumps(active_repos(rows, is_past), ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
 

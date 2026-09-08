@@ -99,12 +99,43 @@ def test_행_초안을_만들지_않는다():
 
 
 def test_활동_없는_저장소는_활동목록에서_빠진다():
-    assert active_repos([BACKEND, E2E, IDLE]) == ["qmeet/backend2", "e2etest/qmeet"]
+    assert active_repos([BACKEND, E2E, IDLE], is_past=False) == [
+        "qmeet/backend2", "e2etest/qmeet",
+    ]
 
 
 def test_활동_판정에_미커밋만_있어도_포함한다():
     only_uncommitted = ev("x/y", uncommitted=(" M a.py",))
-    assert active_repos([only_uncommitted]) == ["x/y"]
+    assert active_repos([only_uncommitted], is_past=False) == ["x/y"]
+
+
+def test_미커밋만_있으면_과거_날짜에서는_활동이_아니다():
+    """git status 는 수집 시점 상태라 과거 날짜를 말해줄 수 없다."""
+    only_uncommitted = ev("x/y", uncommitted=(" M a.py",))
+    assert active_repos([only_uncommitted], is_past=False) == ["x/y"]
+    assert active_repos([only_uncommitted], is_past=True) == []
+
+
+def test_이벤트만_있고_커밋도_프롬프트도_없으면_활동이_아니다():
+    """/compact 만 찍힌 세션처럼 사람이 시킨 일이 없으면 오늘이든 과거든 활동이 아니다."""
+    events_only = ev("golfzone/admin", event_count=14)
+    assert active_repos([events_only], is_past=False) == []
+    assert active_repos([events_only], is_past=True) == []
+
+
+def test_프롬프트가_있으면_커밋이_없어도_활동이다():
+    prompted = ev("x/y", prompts=("핸드오프 확인",))
+    assert active_repos([prompted], is_past=False) == ["x/y"]
+    assert active_repos([prompted], is_past=True) == ["x/y"]
+
+
+def test_커밋이_있으면_항상_활동이다():
+    committed = ev(
+        "x/y",
+        commits=(Commit("66fe6f12", "09:29", "feat: x", "me@example.com"),),
+    )
+    assert active_repos([committed], is_past=False) == ["x/y"]
+    assert active_repos([committed], is_past=True) == ["x/y"]
 
 
 def test_비git_저장소도_렌더된다():
