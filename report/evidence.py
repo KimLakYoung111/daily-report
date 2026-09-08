@@ -35,6 +35,25 @@ def _has_activity(row: RepoEvidence) -> bool:
     return bool(row.commits or row.uncommitted or row.event_count)
 
 
+def prompt_limit(row: RepoEvidence) -> int | None:
+    """이 저장소에 적용할 프롬프트 표시 상한. None 이면 상한 없음.
+
+    커밋이 0건인 저장소는 상한을 걷어낸다. 커밋이 있으면 커밋 목록이 그날
+    무슨 일이 있었는지 뼈대를 잡아 주므로 프롬프트는 보조 근거이고 8건에서
+    잘라도 읽을 만하다. 반대로 커밋이 0건이면 프롬프트가 그 저장소 근거의
+    전부다 — 자르는 순간 "커밋을 남기지 않은 작업"이 근거에서 통째로
+    사라지는데, 그게 바로 이 도구가 막으려는 실패(2026-09-08 미커밋 6행
+    누락)와 같은 종류다.
+
+    상한을 없애도 근거 파일이 부풀지 않는다. 2026-09-08 실측으로 커밋 0건
+    저장소의 프롬프트는 최대 6건이었다(교육생 폴더 6·2·1·1·1건,
+    qmeet/front 하위 nested 1건). 반면 커밋이 있는 저장소는 28~47건이라
+    상한이 필요하고, 잘렸다는 사실은 아래 제목의 "총 N건 중 M건"이
+    항상 드러낸다.
+    """
+    return None if not row.commits else PROMPT_LIMIT
+
+
 def active_repos(rows: Sequence[RepoEvidence], is_past: bool) -> list[str]:
     """`data/*.yaml`에 옮겨졌어야 할 저장소만. build_report 의 커버리지 경고가 이걸 쓴다.
 
@@ -141,10 +160,18 @@ def render(
             out.append("")
 
         if r.prompts:
+            limit = prompt_limit(r)
+            shown = r.prompts if limit is None else r.prompts[:limit]
+            # 총 건수와 실린 건수를 둘 다 적는다. 예전 제목("최대 8건")으로는
+            # 상한이 있다는 것만 알 수 있고, 그날 실제로 잘렸는지·얼마나
+            # 잘렸는지를 알 수 없었다 — 2026-09-08 실측 203건 중 142건이
+            # 아무 표시 없이 빠져 있었다.
             out.append(
-                "### 세션 프롬프트 (자동 세션 제외 · 최대 {}건)".format(PROMPT_LIMIT)
+                "### 세션 프롬프트 (자동 세션 제외 · 총 {}건 중 {}건)".format(
+                    len(r.prompts), len(shown)
+                )
             )
-            for p in r.prompts[:PROMPT_LIMIT]:
+            for p in shown:
                 out.append("- {}".format(p))
             out.append("")
 

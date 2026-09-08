@@ -8,12 +8,14 @@
 from pathlib import Path
 
 import pytest
+import yaml
 
 from report.config import load_config
 from report.daydata import load_day
 from report.excel import flatten
 
 ROOT = Path(__file__).resolve().parent.parent
+DAY_FILES = sorted((ROOT / "data").glob("[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].yaml"))
 
 
 @pytest.fixture(scope="module")
@@ -22,10 +24,31 @@ def config():
 
 
 def test_실제_config_가_로딩된다(config):
-    assert len(config.categories) == 9
+    """구분 개수는 못 박지 않는다.
+
+    예전에는 `len(config.categories) == 9` 였는데, 사용자가 구분을 하나
+    더하는 정상적인 편집만으로 테스트가 깨졌다. 대신 비어 있지 않은지와,
+    data/*.yaml 이 실제로 참조하는 구분이 config 에 다 있는지를 본다.
+    """
+    assert config.categories
+
+    referenced: set[str] = set()
+    for path in DAY_FILES:
+        raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        for entry in raw.get("rows") or []:
+            referenced.add(str(entry.get("category") or "").strip())
+    assert referenced, "data/*.yaml 이 구분을 하나도 참조하지 않는다"
+
+    missing = sorted(n for n in referenced if config.category(n) is None)
+    assert missing == [], "config.yaml 에 없는 구분: {}".format(missing)
+
     # 백엔드 공수산정은 config.yaml 에 display: "백엔드\n공수산정" 이 있어
-    # 실제 엑셀의 구분 칸처럼 두 줄로 나온다 — 손으로 만든 시트를 그대로 재현한다.
-    assert config.label("백엔드 공수산정") == "백엔드\n공수산정(85%)"
+    # 실제 엑셀의 구분 칸처럼 두 줄로 나온다 — 손으로 만든 시트를 그대로
+    # 재현한다. 진행률 숫자는 사람이 고치는 값이므로 못 박지 않고,
+    # 줄바꿈이 살아 있는지만 본다.
+    label = config.label("백엔드 공수산정")
+    assert label.startswith("백엔드\n공수산정(")
+    assert label.endswith("%)")
 
 
 @pytest.mark.parametrize(
@@ -66,8 +89,35 @@ def test_TC_입력_양식_항목은_저장소가_두_곳이다(config):
     assert len(item.locations) == 2
 
 
-def test_모든_날짜_파일에_경고가_없다(config):
-    """저장소 폴더가 실제로 다 있어야 한다 — 오타를 여기서 잡는다."""
-    for path in sorted((ROOT / "data").glob("*.yaml")):
+def test_최신_날짜_파일에_경고가_없다(config):
+    """저장소 폴더가 실제로 다 있어야 한다 — 오타를 여기서 잡는다.
+
+    두 가지를 좁혔다.
+
+    첫째, dev_root 는 이 사용자 기계의 경로다. 없는 환경(CI·다른 기계)에서는
+    검사 자체가 성립하지 않으므로 건너뛴다. 예전에는 그대로 실패했다.
+
+    둘째, 폴더 존재를 단언하는 대상은 가장 최신 날짜 파일 하나뿐이다.
+    저장소를 옮기거나 이름을 바꾸면 과거 날짜 파일은 영구히 못 맞추게 되고
+    (그날 그 경로였다는 건 바꿀 수 없는 사실이다), data/ 가 쌓이는 만큼
+    테스트가 끝없이 무거워진다. 오타는 오늘 쓰는 파일에서 생기므로 최신
+    파일만 단언해도 잡으려던 실수는 그대로 잡힌다. 과거 파일은 출력만 한다.
+    """
+    if not Path(config.dev_root).is_dir():
+        pytest.skip(
+            "dev_root 가 없다 ({}) — 이 기계의 폴더 구성에만 의존하는 검사다".format(
+                config.dev_root
+            )
+        )
+
+    assert DAY_FILES, "data/ 에 날짜 파일이 없다"
+
+    for path in DAY_FILES[:-1]:
         _, warnings = load_day(path, config)
-        assert warnings == [], "{}: {}".format(path.name, warnings)
+        if warnings:
+            print("[참고] {} (과거 파일이라 단언하지 않는다): {}".format(
+                path.name, warnings))
+
+    latest = DAY_FILES[-1]
+    _, warnings = load_day(latest, config)
+    assert warnings == [], "{}: {}".format(latest.name, warnings)

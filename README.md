@@ -1,19 +1,62 @@
-# 🎈 Blank app template
+# 일일보고 자동화
 
-A simple Streamlit app template for you to modify!
+개발자 한 명이 손으로 유지하던 일일보고 스프레드시트를, 같은 6열 양식의 엑셀
+파일로 만들어 준다. 근거(커밋·미커밋 변경·인계 문서·세션 기록)를 모으는 일은
+도구가 하고, 그 근거를 읽어 보고 문장으로 옮기는 판단은 사람이 한다.
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://blank-app-template.streamlit.app/)
+## 매일 하는 순서
 
-### How to run it on your own machine
+```
+python collect_evidence.py [YYYY.M.D]    # 생략하면 오늘
+```
 
-1. Install the requirements
+1. `output/evidence/YYYY-MM-DD.md` 를 **처음부터 끝까지 읽는다.**
+2. 읽은 내용을 업무 언어로 `data/YYYY-MM-DD.yaml` 에 쓴다.
+   (양식은 `data/2026-09-08.yaml` 을 참고한다. `date:` 는 파일명과 같은 날이어야
+   한다 — 다르면 에러로 막는다.)
+3. `python build_report.py [YYYY.M.D]` — 날짜를 생략하면 `data/` 의 전체 날짜.
+4. `output/일일보고-YYYY-MM-DD.xlsx` 를 열어 확인한다. (`.tsv` 도 같이 나온다.)
 
-   ```
-   $ pip install -r requirements.txt
-   ```
+원본 파일이 엑셀에서 열려 있으면 `_` 접두사를 붙인 파일로 저장하고 그렇게
+알린다. 정상 동작이다.
 
-2. Run the app
+## `config.yaml` 에서 사람이 관리하는 것
 
-   ```
-   $ streamlit run streamlit_app.py
-   ```
+| 항목 | 뜻 |
+|---|---|
+| `me` | 본인 이메일 목록. 여기 없는 작성자의 커밋은 보고서에서 뺀다. |
+| `categories[].progress` | 모듈 전체 진행률. **자동 갱신되지 않는다** — 직접 고친다. |
+| `categories[].display` | 엑셀 B열(구분) 라벨. 줄바꿈을 넣어 두 줄로 보이게 한다. |
+| `categories[].repos` | 저장소 → 구분 매핑. **경로 세그먼트 경계 기준 프리픽스**로 맞춘다. 상위 폴더 하나를 적으면 그 아래 저장소가 다 걸리고, 형제 경로(`qmeet/front` 와 `qmeet/front_design_prototype`)는 서로 안 걸린다. |
+
+## 행 초안을 일부러 만들지 않는다
+
+이 도구는 보고서 행을 대신 써 주지 않는다. 만든 날, 커밋 메시지에서 뽑은
+그럴듯한 초안을 믿고 근거 전체를 다시 읽지 않아 **작업 6행을 통째로 놓쳤다.**
+그 6행은 커밋이 하나도 없었고 미커밋 변경으로만 존재했다. 초안이 있으면 사람은
+근거를 읽지 않고 초안을 고치게 되고, 초안에 없는 일은 영원히 안 보인다.
+행을 자동으로 채우는 기능을 다시 붙이려 한다면, 먼저 이 문단을 읽는다.
+
+## 커버리지 경고는 안전장치다
+
+`build_report.py` 가 `[경고] 근거에는 활동이 있는데 표에 없다: <저장소>` 를
+찍으면, 그건 고장이 아니라 위의 사고를 막는 장치가 도는 소리다. 저장소 이름을
+보고 그 작업이 정말 보고할 게 없는지 확인한다. `daily-report/blank-app`(이
+도구 자신의 저장소)은 보고서에 안 싣는 것이 보통이라 매번 경고에 나온다.
+
+## 한계 두 가지
+
+- **과거 날짜의 미커밋 작업은 복원할 수 없다.** `git status` 는 현재만 안다.
+  당일 실행이 전제이고, 과거 날짜는 커밋·세션·인계 문서까지만 근거가 된다.
+- **F열은 내부 폴더 경로다.** 위치 확인용이므로, 보고서를 제출하기 전에
+  숨기거나 삭제한다.
+
+전체 설계와 나머지 한계는
+`docs/superpowers/specs/2026-09-08-daily-report-automation-design.md` 에 있다.
+
+## 개발
+
+```
+pip install -r requirements.txt
+python -m pytest -q
+```

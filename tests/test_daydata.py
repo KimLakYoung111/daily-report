@@ -121,6 +121,67 @@ def test_date_가_없으면_에러(tmp_path):
         load_day(write(tmp_path, text), CFG)
 
 
+def test_date_가_파일명과_같으면_통과한다(tmp_path):
+    """'2026.9.08' 과 파일명 '2026-09-08' 은 표기만 다르고 같은 날이다."""
+    rep, warns = load_day(write(tmp_path, SAMPLE), CFG)
+    assert rep.date == "2026.9.08"
+    assert warns == []
+
+
+def test_date_가_파일명과_다르면_에러(tmp_path):
+    """어제 파일을 복사해 date 만 안 고친 경우 — 대표님께 어제 날짜가 간다."""
+    text = SAMPLE.replace("date: 2026.9.08", "date: 2026.9.07")
+    with pytest.raises(DayDataError, match="date 가 파일명과 다르다"):
+        load_day(write(tmp_path, text), CFG)
+
+
+def test_date_를_날짜로_못_읽으면_경고만_낸다(tmp_path):
+    """date 는 자유 형식 라벨이라, 못 읽으면 막지 않고 비교 못 했다고만 알린다."""
+    text = SAMPLE.replace("date: 2026.9.08", 'date: "9월 둘째 주"')
+    rep, warns = load_day(write(tmp_path, text), CFG)
+    assert rep.date == "9월 둘째 주"
+    assert any("비교하지 못했다" in w for w in warns)
+
+
+def test_locations_도_default_location_도_없으면_에러(tmp_path):
+    """위치가 없으면 F열을 채울 수 없다 — 검증 분기가 실제로 걸리는지 본다."""
+    text = """\
+date: 2026.9.08
+rows:
+  - category: 자동화
+    items:
+      - task: 위치를 안 적었다
+        progress: 100%
+"""
+    with pytest.raises(DayDataError, match="locations 도 default_location 도 없다"):
+        load_day(write(tmp_path, text), CFG)
+
+
+def test_행이_매핑이_아니면_친절한_에러(tmp_path):
+    """`.get` 이 그대로 AttributeError 를 던지면 파일 이름조차 안 나온다."""
+    text = "date: 2026.9.08\nrows:\n  - 자동화\n"
+    with pytest.raises(DayDataError, match="매핑이어야 한다"):
+        load_day(write(tmp_path, text), CFG)
+
+
+def test_항목이_매핑이_아니면_친절한_에러(tmp_path):
+    text = """\
+date: 2026.9.08
+rows:
+  - category: 자동화
+    default_location: { repo: e2etest/qmeet, branch: main }
+    items:
+      - 그냥 문자열
+"""
+    with pytest.raises(DayDataError, match="매핑이어야 한다"):
+        load_day(write(tmp_path, text), CFG)
+
+
+def test_파일_최상단이_매핑이_아니면_친절한_에러(tmp_path):
+    with pytest.raises(DayDataError, match="매핑이어야 한다"):
+        load_day(write(tmp_path, "그냥 문자열이다\n"), CFG)
+
+
 def test_항목이_없는_구분이면_에러(tmp_path):
     text = "date: 2026.9.08\nrows:\n  - category: 자동화\n    default_location: { repo: e2etest/qmeet, branch: main }\n    items: []\n"
     with pytest.raises(DayDataError, match="항목이 없"):

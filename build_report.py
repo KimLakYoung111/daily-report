@@ -11,6 +11,7 @@
 """
 from __future__ import annotations
 
+import datetime as dt
 import json
 import sys
 from pathlib import Path
@@ -26,16 +27,22 @@ EVIDENCE_DIR = OUT_DIR / "evidence"
 
 
 def data_path(day_arg: str) -> Path:
-    """'2026.9.8' → data/2026-09-08.yaml"""
+    """'2026.9.8' → data/2026-09-08.yaml. 날짜가 아니면 ValueError."""
     y, m, d = (int(x) for x in day_arg.replace("-", ".").split("."))
-    return DATA_DIR / "{}-{:02d}-{:02d}.yaml".format(y, m, d)
+    return DATA_DIR / "{}.yaml".format(dt.date(y, m, d).isoformat())
 
 
-def active_repos_for(stem: str) -> list[str]:
-    """근거 사이드카에서 활동 있던 저장소 목록을 읽는다. 없으면 빈 목록."""
+def active_repos_for(stem: str) -> list[str] | None:
+    """근거 사이드카의 활동 저장소 목록. 파일 자체가 없으면 None.
+
+    "사이드카가 없다"(근거를 아직 안 모았다)와 "사이드카는 있는데 활동
+    저장소가 0곳이다"(정말 활동이 없었거나 수집이 아무것도 못 잡았다)는
+    다른 상황이고 해야 할 조치도 다르다. 둘 다 빈 목록으로 뭉개면
+    사용자가 근거를 안 모은 건지 모으고도 비었는지 알 수 없다.
+    """
     path = EVIDENCE_DIR / "{}.repos.json".format(stem)
     if not path.is_file():
-        return []
+        return None
     try:
         return list(json.loads(path.read_text(encoding="utf-8")))
     except (ValueError, OSError):
@@ -50,9 +57,14 @@ def build_one(path: Path, config) -> int:
         print("  [경고] {}".format(warn))
 
     active = active_repos_for(path.stem)
-    if not active:
+    if active is None:
         print("  [경고] 근거 사이드카가 없다 — 커버리지를 확인하지 못했다. "
               "`python collect_evidence.py {}` 를 먼저 돌린다.".format(report.date))
+        active = []
+    elif not active:
+        print("  [경고] 근거 사이드카는 있는데 활동 저장소가 0곳이다 — "
+              "커버리지 검사가 아무것도 걸러내지 못한다. 그날 정말 활동이 "
+              "없었는지 근거 파일을 확인한다.")
     for warn in coverage_warnings(report, active):
         print("  [경고] {}".format(warn))
 
@@ -60,12 +72,13 @@ def build_one(path: Path, config) -> int:
     stem = "일일보고-{}".format(path.stem)
 
     xlsx_path, total = write_xlsx(report, config, OUT_DIR / (stem + ".xlsx"))
-    write_tsv(report, config, OUT_DIR / (stem + ".tsv"))
+    tsv_path = write_tsv(report, config, OUT_DIR / (stem + ".tsv"))
 
-    if xlsx_path.name.startswith("_"):
-        print("  [대기] 원본이 열려 있어 {} 로 저장했다".format(xlsx_path.name))
+    for written in (xlsx_path, tsv_path):
+        if written.name.startswith("_"):
+            print("  [대기] 원본이 열려 있어 {} 로 저장했다".format(written.name))
     print("  {}  ({}행 x 6열)".format(xlsx_path.relative_to(HERE), total))
-    print("  {}".format((OUT_DIR / (stem + ".tsv")).relative_to(HERE)))
+    print("  {}".format(tsv_path.relative_to(HERE)))
     return total
 
 
@@ -76,14 +89,22 @@ def main() -> int:
     if len(sys.argv) > 1:
         paths = []
         for arg in sys.argv[1:]:
-            p = data_path(arg)
+            try:
+                p = data_path(arg)
+            except ValueError:
+                print("[에러] 날짜를 읽을 수 없다: {!r}".format(arg))
+                print("       사용법: python build_report.py [YYYY.M.D]  "
+                      "(예: 2026.9.8)")
+                return 1
             if not p.is_file():
                 print("[없음] {} — 먼저 근거를 보고 이 파일을 쓴다".format(
                     p.relative_to(HERE)))
                 return 1
             paths.append(p)
     else:
-        paths = sorted(DATA_DIR.glob("*.yaml"))
+        # 날짜 모양만 고른다. `*.yaml` 로 훑으면 _template.yaml 같은 파일이
+        # 그대로 일일보고-_template.xlsx 로 나가버린다.
+        paths = sorted(DATA_DIR.glob("[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].yaml"))
         if not paths:
             print("[없음] data/ 에 날짜 파일이 없다")
             return 1

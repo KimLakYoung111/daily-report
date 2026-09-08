@@ -6,6 +6,8 @@
 """
 from __future__ import annotations
 
+import datetime as dt
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,9 +16,24 @@ import yaml
 
 from .config import PROGRESS_RE, Config, is_under, normalize_repo
 
+#: date 라벨은 자유 형식이다("2026.9.08", "2026-09-08", "2026.9.8 (화)" …).
+#: 연·월·일 세 덩어리만 뽑아 파일명과 맞춰 본다.
+_DATE_IN_LABEL = re.compile(r"(\d{4})\D+(\d{1,2})\D+(\d{1,2})")
+
 
 class DayDataError(Exception):
     """날짜 데이터 파일이 규칙에 맞지 않을 때."""
+
+
+def _parse_label_date(text: str) -> dt.date | None:
+    """자유 형식 문자열에서 날짜를 뽑는다. 못 읽으면 None."""
+    m = _DATE_IN_LABEL.search(text)
+    if not m:
+        return None
+    try:
+        return dt.date(*(int(g) for g in m.groups()))
+    except ValueError:
+        return None
 
 
 @dataclass(frozen=True)
@@ -58,16 +75,49 @@ def load_day(path: str | Path, config: Config) -> tuple[DayReport, list[str]]:
     """(보고서, 경고 목록). 규칙 위반은 DayDataError."""
     path = Path(path)
     raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if not isinstance(raw, dict):
+        raise DayDataError(
+            "{}: 파일 최상단이 date·rows 를 가진 매핑이어야 한다".format(path.name)
+        )
     warnings: list[str] = []
 
     date_label = str(raw.get("date") or "").strip()
     if not date_label:
         raise DayDataError("{}: date 가 없다".format(path.name))
 
+    # 어제 파일을 틀로 복사해 date 만 안 고치는 실수를 여기서 잡는다.
+    # 그냥 두면 A열에 어제 날짜가 박힌 문서가 대표님께 가는데, 커버리지
+    # 검사는 파일명으로 사이드카를 찾으므로 경고 하나 없이 통과한다.
+    stem_date = _parse_label_date(path.stem)
+    if stem_date is not None:
+        label_date = _parse_label_date(date_label)
+        if label_date is None:
+            warnings.append(
+                "date 를 날짜로 읽을 수 없어 파일명과 비교하지 못했다: {!r}".format(
+                    date_label
+                )
+            )
+        elif label_date != stem_date:
+            raise DayDataError(
+                "{}: date 가 파일명과 다르다 — {!r} (파일명은 {})".format(
+                    path.name, date_label, stem_date.isoformat()
+                )
+            )
+
+    raw_rows = raw.get("rows") or []
+    if not isinstance(raw_rows, list):
+        raise DayDataError("{}: rows 는 목록이어야 한다".format(path.name))
+
     rows: list[Row] = []
     seen: set[str] = set()
 
-    for entry in raw.get("rows") or []:
+    for entry in raw_rows:
+        if not isinstance(entry, dict):
+            raise DayDataError(
+                "{}: 구분은 category·items 를 가진 매핑이어야 한다 — {!r}".format(
+                    path.name, entry
+                )
+            )
         category = str(entry.get("category") or "").strip()
         if config.category(category) is None:
             raise DayDataError(
@@ -84,11 +134,19 @@ def load_day(path: str | Path, config: Config) -> tuple[DayReport, list[str]]:
         default = _location(default_raw, where) if default_raw else None
 
         raw_items = entry.get("items") or []
+        if not isinstance(raw_items, list):
+            raise DayDataError("{}: items 는 목록이어야 한다".format(where))
         if not raw_items:
             raise DayDataError("{}: 항목이 없는 구분이다".format(where))
 
         items: list[Item] = []
         for raw_item in raw_items:
+            if not isinstance(raw_item, dict):
+                raise DayDataError(
+                    "{}: 항목은 task·progress 를 가진 매핑이어야 한다 — {!r}".format(
+                        where, raw_item
+                    )
+                )
             task = str(raw_item.get("task") or "").strip()
             if not task:
                 raise DayDataError("{}: 작업명이 비었다".format(where))

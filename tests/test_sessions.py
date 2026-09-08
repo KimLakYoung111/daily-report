@@ -7,6 +7,13 @@ from report.sessions import load_events
 
 DAY = dt.date(2026, 9, 8)
 
+# 아래 픽스처의 timestamp 는 UTC(Z)이고, 기대값은 KST(UTC+9) 처럼 UTC 보다
+# 앞선 로컬 시간대를 가정한다. load_events 는 이벤트를 로컬 시간대로 옮겨
+# 날짜를 비교하므로, 예를 들어 "2026-09-08T00:10:00Z" 가 그날 이벤트로 잡히는
+# 것은 오프셋이 0 이상일 때만이다. 대략 UTC+0 서쪽(음수 오프셋)에서 돌리면
+# 날짜가 하루 밀려 실패한다(반대쪽 한계는 대략 UTC+15). 다른 시간대에서
+# 실패하면 픽스처의 시각을 정오 근처로 옮긴다.
+
 
 def line(ts, cwd, **extra):
     o = {"timestamp": ts, "cwd": cwd}

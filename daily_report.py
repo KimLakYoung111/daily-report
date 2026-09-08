@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """로컬 Claude Code 세션 기록에서 하루치 작업 목록을 뽑는다.
 사용법: python3 daily_report.py [YYYY-MM-DD]   (생략 시 오늘)
+
+주의 — 일일보고는 이 파일이 만들지 않는다. collect_evidence.py → build_report.py 다.
+그리고 아래 cwd 집계는 세션의 첫 cwd 만 쓰므로, 세션 중간에 디렉터리를 옮기면
+그쪽 저장소가 사라진다 — report/sessions.py 가 이벤트별 cwd 로 고친 버그다.
 """
 import json, sys, glob, os, datetime, collections
 

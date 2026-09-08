@@ -49,7 +49,12 @@ categories:
     repos: [a/b]
   - name: 백엔드 공수산정
     progress: 85%
-    repos: [qmeet/backend2, qmeet/backend2/sub]
+    repos: [qmeet/backend2]
+  # 더 깊은 프리픽스는 일부러 다른 구분에 매핑한다. 같은 구분에 두면
+  # 짧은 프리픽스가 이기더라도 결과가 같아서, 아래 "가장 긴 프리픽스가
+  # 이긴다" 테스트가 절대 실패할 수 없다 — 없는 것보다 나쁜 테스트다.
+  - name: 하위구분
+    repos: [qmeet/backend2/sub]
 dev_root: C:\\Users\\klyhj\\dev
 """
 
@@ -175,9 +180,11 @@ def test_정확_일치가_짧은_프리픽스_일치보다_우선한다(tmp_path
 
 def test_가장_긴_프리픽스가_이긴다(tmp_path):
     cfg = load_config(write(tmp_path, SAMPLE_PREFIX))
-    # qmeet/backend2 와 qmeet/backend2/sub 둘 다 등록된 상태에서
-    # qmeet/backend2/sub 아래를 조회하면 더 긴(더 구체적인) 쪽이 이긴다
-    assert cfg.category_for_repo("qmeet/backend2/sub/child") == "백엔드 공수산정"
+    # qmeet/backend2(백엔드 공수산정) 와 qmeet/backend2/sub(하위구분) 이
+    # 서로 다른 구분에 등록된 상태에서 qmeet/backend2/sub 아래를 조회하면
+    # 더 긴(더 구체적인) 쪽이 이긴다. 두 등록이 같은 구분을 가리키면
+    # 짧은 쪽이 이겨도 결과가 같아 이 단언이 아무것도 안 지킨다.
+    assert cfg.category_for_repo("qmeet/backend2/sub/child") == "하위구분"
 
 
 def test_매칭되는_구분이_없으면_None(tmp_path):

@@ -22,7 +22,7 @@ from pathlib import Path
 from report.config import load_config
 from report.evidence import RepoEvidence, active_repos, render
 from report.handoff import read as read_handoff
-from report.repos import branch, commits, discover, git_root, to_rel, uncommitted
+from report.repos import branch, commits, discover, git_root, uncommitted
 from report.sessions import load_events
 
 HERE = Path(__file__).resolve().parent
@@ -31,6 +31,7 @@ PROJECTS_ROOT = Path(os.path.expanduser("~/.claude/projects"))
 
 
 def parse_day(text: str | None) -> dt.date:
+    """'2026.9.8' → date(2026, 9, 8). 날짜가 아니면 ValueError."""
     if not text:
         return dt.date.today()
     y, m, d = (int(x) for x in text.replace("-", ".").split("."))
@@ -39,21 +40,36 @@ def parse_day(text: str | None) -> dt.date:
 
 def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8")
-    day = parse_day(sys.argv[1] if len(sys.argv) > 1 else None)
+    arg = sys.argv[1] if len(sys.argv) > 1 else None
+    try:
+        day = parse_day(arg)
+    except ValueError:
+        print("[에러] 날짜를 읽을 수 없다: {!r}".format(arg))
+        print("       사용법: python collect_evidence.py [YYYY.M.D]  (예: 2026.9.8)")
+        return 1
     config = load_config(HERE / "config.yaml")
 
+    # 세션 폴더가 없으면 멈춘다. load_events 는 없는 트리를 빈 목록으로
+    # 돌려주는데(빈 트리를 가리키는 건 정당한 호출이다), 그대로 진행하면
+    # 커버리지 표의 세션 이벤트가 전부 0건이 되어 "그날 세션이 없었다"로
+    # 읽힌다. Claude Code 가 저장 경로를 바꾸거나 다른 기계에서 돌릴 때
+    # 조용히 근거의 절반이 사라지는 경로라 여기서 시끄럽게 끝낸다.
+    if not PROJECTS_ROOT.is_dir():
+        print("[에러] Claude Code 세션 폴더가 없다: {}".format(PROJECTS_ROOT))
+        print("       경로가 바뀌었거나 다른 기계다. 이대로 모으면 세션 이벤트가")
+        print("       전부 0건으로 나와 그날 세션이 없었던 것처럼 보인다.")
+        return 1
+
     events = load_events(day, PROJECTS_ROOT, config.ignore_prompts)
-    repos = discover(events, config)
+    # 저장소 목록과 cwd→저장소 매핑을 한 번에 받는다. 여기서 같은 계산을
+    # 다시 하면 discover 와 규칙이 갈릴 때 이벤트가 엉뚱한 저장소에 붙는다.
+    repos, repo_of_cwd = discover(events, config)
 
     # 이벤트를 저장소별로 접어 넣는다 (하위 디렉터리는 git 루트로 정규화)
     counts: Counter[str] = Counter()
     prompts: dict[str, list[str]] = defaultdict(list)
-    resolved: dict[str, str] = {}
     for ev in events:
-        if ev.cwd not in resolved:
-            root = git_root(ev.cwd)
-            resolved[ev.cwd] = to_rel(root or ev.cwd, config.dev_root)
-        key = resolved[ev.cwd]
+        key = repo_of_cwd[ev.cwd]
         counts[key] += 1
         if ev.prompt:
             prompts[key].append("{:%H:%M} · {}".format(ev.ts, ev.prompt))

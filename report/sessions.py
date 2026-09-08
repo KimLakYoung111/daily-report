@@ -27,6 +27,13 @@ def _local_tz() -> dt.tzinfo:
     return dt.datetime.now().astimezone().tzinfo
 
 
+# content 가 블록 목록인 경우는 2026-09 실측에서 사람 턴 3,541건 중 1건뿐이었다.
+# 그래서 블록을 공백으로 이어붙이는 지금 처리로 충분하다.
+#
+# 다만 Claude Code 세션 포맷이 바뀌어 사람 프롬프트 앞에 system-reminder 블록이
+# 먼저 붙는 식이 되면, 이어붙인 문자열이 '<' 로 시작하게 되어 아래
+# `text.startswith("<")` 가 진짜 프롬프트를 통째로 버린다. 근거 파일의 프롬프트
+# 수가 갑자기 줄면 여기를 가장 먼저 본다.
 def _extract_prompt(obj: dict, ignore_prompts: Sequence[str]) -> str | None:
     """사람이 직접 넣은 프롬프트만 돌려준다. 아니면 None."""
     if obj.get("type") != "user" or obj.get("userType") != "external":

@@ -19,6 +19,19 @@ from .sessions import SessionEvent
 
 _SEP = "\x1f"  # git --pretty 필드 구분자. 커밋 제목에 나올 일이 없다
 
+#: 실패해도 조용히 None 을 줘야 하는(= 정상 상태인) stderr 패턴. 소문자 비교.
+#:
+#: - "not a git repository": discover() 가 "git 저장소가 아닌 cwd"를 이 경로로
+#:   걸러낸다. 교육 폴더처럼 git 이 아닌 작업 위치가 정상적으로 존재한다.
+#: - "ambiguous argument 'head'": `git init` 만 하고 커밋이 아직 없는 저장소.
+#:   rev-parse --abbrev-ref HEAD 가 exit 128 로 죽는데, 새 프로젝트 폴더에서
+#:   흔히 있는 정상 상태다(실측 확인). 여기 없으면 브랜치를 읽다가 수집
+#:   전체가 터진다.
+_QUIET_STDERR: tuple[str, ...] = (
+    "not a git repository",
+    "ambiguous argument 'head'",
+)
+
 
 @dataclass(frozen=True)
 class Commit:
@@ -35,11 +48,13 @@ def _git(repo: str | Path, *args: str) -> str | None:
     아닌 경로를 git 이 8진수 이스케이프 문자열로 따옴표 처리해버려서 (예:
     "\\355\\225\\234...") uncommitted() 결과가 사람도 코드도 못 읽는 값이 된다.
 
-    exit code 가 0 이 아니어도 대부분은 조용히 None 을 준다 — discover() 가
-    "git 저장소가 아닌 cwd"를 이 경로로 걸러내기 때문에, 저장소가 아닌 게
-    죄가 아니다. 다만 git 이 옵션 자체를 못 알아들었을 때만 예외로 시끄럽게
-    한다 — 이건 우리 쪽 인자가 잘못됐다는 뜻이라(예: git 버전이 낮아 새
-    플래그를 모름) 조용히 넘어가면 커밋이 통째로 사라진 채 아무도 모른다.
+    exit code 가 0 이 아닐 때, 조용히 None 을 주는 건 _QUIET_STDERR 에
+    적힌 정상 상태뿐이다. 나머지 실패는 전부 RuntimeError 로 터뜨린다.
+    옛 동작은 실패를 통째로 삼켜서, `detected dubious ownership`·깨진
+    인덱스·권한 오류 같은 진짜 고장이 "커밋 0건 + (git 아님)"으로 조용히
+    둔갑했다 — 근거를 다 모았다고 믿게 만드는 실패라 가장 위험하다.
+    git 이 옵션 자체를 못 알아들은 경우는 우리 쪽 인자가 잘못됐다는
+    뜻이므로(예: git 버전이 낮아 새 플래그를 모름) 메시지를 따로 준다.
     """
     argv = ["git", "-c", "core.quotepath=false", "-C", str(repo), *args]
     try:
@@ -50,12 +65,19 @@ def _git(repo: str | Path, *args: str) -> str | None:
     except OSError:
         return None
     if out.returncode != 0:
-        stderr = out.stderr or ""
-        if "unknown option" in stderr.lower() or "unrecognized" in stderr.lower():
+        stderr = (out.stderr or "").strip()
+        lowered = stderr.lower()
+        if "unknown option" in lowered or "unrecognized" in lowered:
             raise RuntimeError(
-                "git 이 인자를 인식하지 못함: {} — {}".format(argv, stderr.strip())
+                "git 이 인자를 인식하지 못함: {} — {}".format(argv, stderr)
             )
-        return None
+        if any(pat in lowered for pat in _QUIET_STDERR):
+            return None
+        raise RuntimeError(
+            "git 명령이 실패했다(exit {}): {} — {}".format(
+                out.returncode, argv, stderr or "(stderr 없음)"
+            )
+        )
     return out.stdout
 
 
@@ -130,20 +152,30 @@ def uncommitted(repo: str | Path) -> list[str]:
     return [ln for ln in out.splitlines() if ln.strip()]
 
 
-def discover(events: Sequence[SessionEvent], config: Config) -> list[str]:
-    """저장소 상대 경로 목록. 세션에서 발견된 것 ∪ config 등록분."""
-    found: set[str] = set()
-    seen_cwd: set[str] = set()
+def discover(
+    events: Sequence[SessionEvent], config: Config
+) -> tuple[list[str], dict[str, str]]:
+    """(저장소 상대 경로 목록, 세션 cwd → 저장소 상대 경로 매핑).
+
+    목록은 세션에서 발견된 것 ∪ config 등록분이다.
+
+    cwd 매핑을 같이 돌려주는 이유는, 호출자가 이벤트를 저장소별로 접을 때
+    같은 계산(git 루트로 정규화 → dev_root 상대경로)을 다시 하지 않게 하는
+    것이다. 두 곳에서 따로 계산하면 규칙이 갈리는 순간 이벤트 수와
+    프롬프트가 조용히 다른 저장소에 붙거나 아무 저장소에도 안 붙는다.
+    세그먼트 경계 판정을 is_under 한 곳으로 모은 것과 같은 이유다.
+    """
+    by_cwd: dict[str, str] = {}
 
     for ev in events:
-        if ev.cwd in seen_cwd:
+        if ev.cwd in by_cwd:
             continue
-        seen_cwd.add(ev.cwd)
         root = git_root(ev.cwd)
         # git 저장소가 아니어도 근거에서 빼지 않는다 (교육 폴더 등)
-        found.add(to_rel(root or ev.cwd, config.dev_root))
+        by_cwd[ev.cwd] = to_rel(root or ev.cwd, config.dev_root)
 
+    found: set[str] = set(by_cwd.values())
     for cat in config.categories:
         found.update(cat.repos)
 
-    return sorted(found)
+    return sorted(found), by_cwd

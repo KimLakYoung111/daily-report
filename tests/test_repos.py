@@ -132,6 +132,32 @@ def test_모르는_옵션이면_조용히_넘어가지_않고_RuntimeError(repo)
         _git(repo, "log", "--definitely-not-a-flag")
 
 
+def test_저장소가_아닌_실패는_조용히_넘어가지_않고_RuntimeError(repo):
+    """`저장소가 아니다`가 아닌 실패는 삼키면 안 된다.
+
+    옛 동작은 exit code 가 0 이 아니면 전부 None 이었다. 그래서 깨진 인덱스나
+    detected dubious ownership 같은 진짜 고장이 "커밋 0건 + (git 아님)"으로
+    조용히 둔갑했다 — 근거를 다 모았다고 믿게 만드는 실패다.
+    """
+    with pytest.raises(RuntimeError, match="git 명령이 실패했다"):
+        _git(repo, "cat-file", "-t", "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef")
+
+
+def test_git_저장소가_아니면_조용히_None(tmp_path):
+    """discover() 가 이 경로로 비git cwd 를 걸러낸다 — 여기는 조용해야 한다."""
+    plain = tmp_path / "plain"
+    plain.mkdir()
+    assert _git(plain, "rev-parse", "--show-toplevel") is None
+
+
+def test_커밋이_없는_저장소의_브랜치_조회도_조용히_None(tmp_path):
+    """`git init` 만 한 새 폴더는 정상 상태다 — 여기서 터지면 수집이 통째로 죽는다."""
+    fresh = tmp_path / "fresh"
+    fresh.mkdir()
+    run(fresh, "init", "-q", "-b", "main")
+    assert branch(fresh) is None
+
+
 def make_config(dev_root, repos):
     cats = (Category(name="테스트구분", repos=tuple(repos)),)
     return Config(me=("me@example.com",), categories=cats, dev_root=dev_root)
@@ -143,7 +169,7 @@ def test_세션_cwd_와_config_저장소의_합집합을_돌려준다(repo, tmp_
         SessionEvent(ts=dt.datetime.now(), cwd=str(repo / "src")),
         SessionEvent(ts=dt.datetime.now(), cwd=str(repo)),
     ]
-    got = discover(events, make_config(dev, ["없는/저장소"]))
+    got, _ = discover(events, make_config(dev, ["없는/저장소"]))
     # 세션에서 발견된 것 + config 에 등록된 것
     assert "proj/app" in got
     assert "없는/저장소" in got
@@ -156,7 +182,7 @@ def test_같은_저장소의_하위_디렉터리는_하나로_접힌다(repo, tm
         SessionEvent(ts=dt.datetime.now(), cwd=str(repo / "src")),
         SessionEvent(ts=dt.datetime.now(), cwd=str(repo)),
     ]
-    got = discover(events, make_config(dev, []))
+    got, _ = discover(events, make_config(dev, []))
     assert got.count("proj/app") == 1
 
 
@@ -166,5 +192,23 @@ def test_git_아닌_cwd_도_상대경로로_남긴다(repo, tmp_path):
     plain = dev / "study" / "week04"
     plain.mkdir(parents=True)
     events = [SessionEvent(ts=dt.datetime.now(), cwd=str(plain))]
-    got = discover(events, make_config(str(dev), []))
+    got, _ = discover(events, make_config(str(dev), []))
     assert "study/week04" in got
+
+
+def test_cwd_매핑도_같이_돌려준다(repo, tmp_path):
+    """호출자가 이벤트를 저장소별로 접을 때 이 매핑을 그대로 쓴다 —
+    같은 계산을 두 곳에서 하면 규칙이 갈리는 순간 이벤트가 엉뚱한
+    저장소에 붙거나 아무 저장소에도 안 붙는다."""
+    dev = str(tmp_path / "dev")
+    (repo / "src").mkdir()
+    events = [
+        SessionEvent(ts=dt.datetime.now(), cwd=str(repo / "src")),
+        SessionEvent(ts=dt.datetime.now(), cwd=str(repo)),
+    ]
+    _, by_cwd = discover(events, make_config(dev, []))
+    # 하위 디렉터리 cwd 도 git 루트의 상대경로로 접힌다
+    assert by_cwd[str(repo / "src")] == "proj/app"
+    assert by_cwd[str(repo)] == "proj/app"
+    # 모든 이벤트 cwd 에 항목이 있어야 한다 (호출자가 KeyError 없이 쓴다)
+    assert set(by_cwd) == {str(repo / "src"), str(repo)}

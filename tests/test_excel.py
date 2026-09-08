@@ -111,6 +111,27 @@ def test_대상이_잠겨_있으면_밑줄_접두사로_쓴다(tmp_path, monkeyp
     assert total == 3
 
 
+def test_TSV_대상이_잠겨_있으면_밑줄_접두사로_쓴다(tmp_path, monkeypatch):
+    """xlsx 와 같은 대비가 있어야 한다 — 없으면 남은 날짜까지 통째로 못 만든다."""
+    import builtins
+
+    target = tmp_path / "out.tsv"
+    real_open = builtins.open
+    calls = {"n": 0}
+
+    def flaky(file, *args, **kw):
+        if str(file).endswith("out.tsv"):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise PermissionError("열려 있음")
+        return real_open(file, *args, **kw)
+
+    monkeypatch.setattr(builtins, "open", flaky)
+    got = write_tsv(REPORT, CFG, target)
+    assert got.name == "_out.tsv"
+    assert got.exists()
+
+
 def test_TSV_를_탭으로_쓴다(tmp_path):
     out = tmp_path / "out.tsv"
     write_tsv(REPORT, CFG, out)

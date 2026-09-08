@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
@@ -52,11 +52,6 @@ class Config:
     categories: tuple[Category, ...]
     dev_root: str
     ignore_prompts: tuple[str, ...] = ()
-    # dict 은 해시가 안 되므로 eq/hash 에서 뺀다. 안 빼면 frozen 데이터클래스가
-    # 만드는 __hash__ 가 터진다.
-    _by_repo: dict[str, str] = field(
-        default_factory=dict, repr=False, compare=False
-    )
 
     def category(self, name: str) -> Category | None:
         for c in self.categories:
@@ -74,14 +69,21 @@ class Config:
         돌려준다. 후보가 여럿이면 가장 긴(가장 구체적인) 등록이 이긴다
         — 정확 일치는 항상 자신보다 짧은 프리픽스보다 길므로 자동으로
         우선한다.
+
+        categories 를 직접 훑는다. 예전에는 load_config 가 만든 저장소→구분
+        딕셔너리를 캐시로 들고 있었는데, 프리픽스 매칭으로 바뀐 뒤로는
+        어차피 전부 훑어 가장 긴 일치를 찾아야 해서 아무것도 아껴 주지
+        않았다. 반면 Config 를 직접 만들면(테스트가 그렇게 한다) 그 캐시가
+        비어 있어, categories[].repos 에 값이 있는데도 None 이 나오는
+        조용한 오답이 됐다.
         """
         best_name: str | None = None
         best_len = -1
-        for p, name in self._by_repo.items():
-            if is_under(p, repo):
-                if len(p) > best_len:
+        for cat in self.categories:
+            for p in cat.repos:
+                if is_under(p, repo) and len(p) > best_len:
                     best_len = len(p)
-                    best_name = name
+                    best_name = cat.name
         return best_name
 
     def order_index(self, name: str) -> int:
@@ -113,7 +115,9 @@ def load_config(path: str | Path) -> Config:
 
     categories: list[Category] = []
     seen_names: set[str] = set()
-    by_repo: dict[str, str] = {}
+    # 한 저장소가 두 구분에 걸리는 설정 오류를 잡기 위한 장부. 로딩이 끝나면
+    # 버린다 — 조회는 category_for_repo 가 categories 를 직접 훑는다.
+    seen_repos: dict[str, str] = {}
 
     for entry in raw.get("categories") or []:
         name = str(entry.get("name") or "").strip()
@@ -135,13 +139,13 @@ def load_config(path: str | Path) -> Config:
 
         repos = tuple(normalize_repo(r) for r in (entry.get("repos") or []))
         for r in repos:
-            if r in by_repo:
+            if r in seen_repos:
                 raise ConfigError(
                     "저장소 {} 가 두 구분에 속한다: {} / {}".format(
-                        r, by_repo[r], name
+                        r, seen_repos[r], name
                     )
                 )
-            by_repo[r] = name
+            seen_repos[r] = name
 
         display = entry.get("display")
         if display is not None:
@@ -165,5 +169,4 @@ def load_config(path: str | Path) -> Config:
         categories=tuple(categories),
         dev_root=dev_root,
         ignore_prompts=tuple(str(x) for x in (raw.get("ignore_prompts") or [])),
-        _by_repo=by_repo,
     )

@@ -57,7 +57,7 @@ def flatten(
         for item in row.items:
             out.append(
                 (
-                    report.date if first else "",
+                    _flatten_line(report.date) if first else "",
                     _flatten_line(config.label(row.category)) if group_first else "",
                     _flatten_line(item.task),
                     _flatten_line(item.progress),
@@ -123,7 +123,21 @@ def write_xlsx(
         return fallback, total
 
 
-def write_tsv(report: DayReport, config: Config, path: str | Path) -> None:
+def _write_tsv_to(report: DayReport, config: Config, path: Path) -> Path:
     with open(path, "w", encoding="utf-8-sig", newline="") as fh:
         for row in flatten(report, config):
             fh.write("\t".join(row) + "\r\n")
+    return path
+
+
+def write_tsv(report: DayReport, config: Config, path: str | Path) -> Path:
+    """TSV 를 쓴다. 대상이 잠겨 있으면 '_' 접두사 경로로 쓴다.
+
+    xlsx 와 같은 대비다. TSV 를 엑셀로 열어 둔 채 돌리면 PermissionError 로
+    터져서, 그 날짜뿐 아니라 뒤에 남은 날짜까지 통째로 못 만들었다.
+    """
+    path = Path(path)
+    try:
+        return _write_tsv_to(report, config, path)
+    except PermissionError:
+        return _write_tsv_to(report, config, path.with_name("_" + path.name))
