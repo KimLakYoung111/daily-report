@@ -35,14 +35,27 @@ def latest_section(text: str) -> str:
 
 def select_headings(text: str) -> str:
     """WANTED 에 걸리는 헤딩 블록만 이어붙인다."""
+    lines = text.splitlines()
+
+    # 펜스 마커 인덱스 미리 찾기. 홀수면 마지막 하나는 무시.
+    fence_indices = []
+    for i, line in enumerate(lines):
+        if line.strip().startswith("```"):
+            fence_indices.append(i)
+
+    # 홀수면 마지막 인덱스는 무시 (타이핑 오류 간주, 섹션 경계 보호)
+    effective_toggles = set(fence_indices)
+    if len(fence_indices) % 2 == 1:
+        effective_toggles.remove(fence_indices[-1])
+
     out: list[str] = []
     keeping = False
     kept_depth = 0  # 선택한 제목의 깊이. 그보다 깊은 부제는 유지.
     in_fence = False  # 펜스 안인지 추적. 펜스 안의 헤딩 검출 방지.
 
-    for line in text.splitlines():
-        # 펜스 토글
-        if line.strip().startswith("```"):
+    for i, line in enumerate(lines):
+        # 효과적인 펜스 토글만
+        if i in effective_toggles:
             in_fence = not in_fence
             if keeping:
                 out.append(line)

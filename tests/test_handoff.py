@@ -105,6 +105,23 @@ def test_울타리_안의_헤딩처럼_보이는_줄은_검출하지_않는다()
     assert "This looks like a heading" in got
 
 
+def test_열리지_않은_울타리는_배제_섹션을_흘려보내지_않는다():
+    text = "## What Was Done\n\n```\ncode\n\n## Verification Commands\n\npytest -q\n"
+    got = select_headings(latest_section(text))
+    assert "What Was Done" in got
+    assert "code" in got
+    # 배제된 섹션의 헤딩과 본문은 나타나지 않아야 함
+    assert "Verification Commands" not in got
+    assert "pytest -q" not in got
+
+
+def test_배제_섹션_울타리_안의_원하는_헤딩처럼_보이는_줄은_keeping을_켜지_않는다():
+    text = "## 함정·주의\n\n```\n# 한 일\n```\n\n## Verification Commands\n\npytest -q\n"
+    got = select_headings(latest_section(text))
+    # 배제된 섹션만 있으므로 결과는 빈 문자열
+    assert got == ""
+
+
 def test_파일을_읽어_발췌한다(tmp_path):
     (tmp_path / "HANDOFF.md").write_text(DOC, encoding="utf-8")
     got = read(tmp_path)
