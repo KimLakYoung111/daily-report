@@ -1,0 +1,39 @@
+# 일일보고 설정 — 사람이 관리한다.
+# 스펙: docs/superpowers/specs/2026-09-08-daily-report-automation-design.md
+
+# 본인 식별. 이 목록에 없는 작성자의 커밋은 보고서에서 제외한다.
+me:
+  - klyhja@l-walk.com
+  - 61999720+KimLakYoung111@users.noreply.github.com   # PR 병합 시 찍히는 주소
+
+# 구분 목록 — 엑셀에 나타날 순서. 여기 없는 구분은 쓰지 않는다.
+# progress 는 모듈 전체 진행률로, 자동 갱신되지 않는다. 직접 고친다.
+categories:
+  - name: 백엔드 공수산정
+    progress: 85%
+    repos: [qmeet/backend2]
+  - name: 프론트 공수산정
+    progress: 20%
+    repos: [qmeet/front]
+  - name: AI 서버 공수산정
+    repos: [qmeet/qmeet_ai]
+  - name: 시안
+    repos: [qmeet/front_design_prototype]
+  - name: 인프라
+    repos: [qmeet/qmeet-dev-ssh]
+  - name: GA4
+    by_content: true       # 저장소로 안 갈라짐 — 내용으로 판단한다
+  - name: CRM
+    by_content: true
+  - name: 자동화
+    repos: [e2etest/qmeet, e2etest/playwright_base]
+  - name: 교육
+    repos: [leadwalk_study/2026/second-half-automation-training]
+
+# 수집 대상 루트. 이 아래 git 저장소를 자동 발견한다.
+dev_root: C:\Users\klyhj\dev
+
+# 근거에서 걸러낼 자동 생성 세션 (사람이 시킨 작업이 아니다).
+ignore_prompts:
+  - "Review this change for security vulnerabilities"
+  - "This session is being continued from a previous conversation"
