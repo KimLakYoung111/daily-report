@@ -41,6 +41,9 @@ class Category:
     progress: str | None = None
     repos: tuple[str, ...] = ()
     by_content: bool = False
+    # 매칭 키(name)와 화면 표기를 분리한다. 예: 이름은 "백엔드 공수산정"
+    # 그대로 두고, 표기만 "백엔드\n공수산정"처럼 줄바꿈을 넣고 싶을 때 쓴다.
+    display: str | None = None
 
 
 @dataclass(frozen=True)
@@ -89,9 +92,12 @@ class Config:
 
     def label(self, name: str) -> str:
         c = self.category(name)
-        if c is None or not c.progress:
+        if c is None:
             return name
-        return "{}({})".format(c.name, c.progress)
+        base = c.display or c.name
+        if not c.progress:
+            return base
+        return "{}({})".format(base, c.progress)
 
 
 def load_config(path: str | Path) -> Config:
@@ -137,12 +143,17 @@ def load_config(path: str | Path) -> Config:
                 )
             by_repo[r] = name
 
+        display = entry.get("display")
+        if display is not None:
+            display = str(display)
+
         categories.append(
             Category(
                 name=name,
                 progress=progress,
                 repos=repos,
                 by_content=bool(entry.get("by_content")),
+                display=display,
             )
         )
 

@@ -35,10 +35,21 @@ def location_text(locations: Sequence[Location], dev_root: str) -> str:
     return "\n".join(parts)
 
 
+def _flatten_line(value: str) -> str:
+    """탭으로 구분된 한 줄 안에는 원본 개행이 들어갈 수 없다 — 공백으로 눌러 편다."""
+    return value.replace("\n", " ")
+
+
 def flatten(
     report: DayReport, config: Config
 ) -> list[tuple[str, str, str, str, str, str]]:
-    """TSV 용 6열 행 목록. 셀 안 개행은 한 칸으로 눌러 한 줄을 유지한다."""
+    """TSV 용 6열 행 목록. 셀 안 개행은 한 칸으로 눌러 한 줄을 유지한다.
+
+    구분(B열) 라벨은 xlsx 에서는 줄바꿈이 있는 그대로(한 셀 안에서
+    두 줄로 보이도록) 쓰이지만, TSV 는 탭으로 구분된 한 줄이 곧 한
+    행이므로 어떤 필드에 개행이 섞여 있어도 안 된다. 그래서 여기서는
+    F열뿐 아니라 모든 필드를 눌러 편다.
+    """
     out: list[tuple[str, str, str, str, str, str]] = []
     first = True
     for row in report.rows:
@@ -47,11 +58,13 @@ def flatten(
             out.append(
                 (
                     report.date if first else "",
-                    config.label(row.category) if group_first else "",
-                    item.task,
-                    item.progress,
-                    item.note,
-                    location_text(item.locations, config.dev_root).replace("\n", " "),
+                    _flatten_line(config.label(row.category)) if group_first else "",
+                    _flatten_line(item.task),
+                    _flatten_line(item.progress),
+                    _flatten_line(item.note),
+                    _flatten_line(
+                        location_text(item.locations, config.dev_root)
+                    ),
                 )
             )
             first = False

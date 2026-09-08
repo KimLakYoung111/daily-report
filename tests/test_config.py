@@ -21,6 +21,21 @@ ignore_prompts:
   - "Review this change for security vulnerabilities"
 """
 
+# name 은 매칭 키로 그대로 두고, display 로 화면 표기(줄바꿈 포함)만 바꾸는
+# 경우를 재현하는 설정.
+SAMPLE_DISPLAY = """\
+me:
+  - klyhja@l-walk.com
+categories:
+  - name: 백엔드 공수산정
+    display: "백엔드\\n공수산정"
+    progress: 85%
+    repos: [qmeet/backend2]
+  - name: 자동화
+    repos: [e2etest/qmeet]
+dev_root: C:\\Users\\klyhj\\dev
+"""
+
 # 부모 폴더 하나에 여러 git 저장소가 걸린 경우를 재현하는 설정.
 # 교육 카테고리는 저장소 자체가 아니라 상위 폴더를 등록해 두고,
 # 실제로는 그 아래 자식 저장소가 여럿 발견된다.
@@ -82,6 +97,14 @@ def test_구분_순서를_돌려준다(tmp_path):
 def test_엑셀_라벨에_모듈_진행률을_붙인다(tmp_path):
     cfg = load_config(write(tmp_path, SAMPLE))
     assert cfg.label("백엔드 공수산정") == "백엔드 공수산정(85%)"
+    assert cfg.label("자동화") == "자동화"
+
+
+def test_display가_있으면_두_줄_라벨을_쓰고_없으면_이름_그대로(tmp_path):
+    cfg = load_config(write(tmp_path, SAMPLE_DISPLAY))
+    # name 은 매칭 키로 남고, display 가 있으면 화면 표기는 display 기준이다.
+    assert cfg.label("백엔드 공수산정") == "백엔드\n공수산정(85%)"
+    # display 가 없는 구분은 그대로 name 을 쓴다.
     assert cfg.label("자동화") == "자동화"
 
 

@@ -10,12 +10,15 @@ me:
 # progress 는 모듈 전체 진행률로, 자동 갱신되지 않는다. 직접 고친다.
 categories:
   - name: 백엔드 공수산정
+    display: "백엔드\n공수산정"
     progress: 85%
     repos: [qmeet/backend2]
   - name: 프론트 공수산정
+    display: "프론트\n공수산정"
     progress: 20%
     repos: [qmeet/front]
   - name: AI 서버 공수산정
+    display: "AI 서버\n공수산정"
     repos: [qmeet/qmeet_ai]
   - name: 시안
     repos: [qmeet/front_design_prototype]
