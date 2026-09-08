@@ -87,6 +87,24 @@ def test_필요한_헤딩이_없으면_빈_문자열():
     assert select_headings(latest_section(text)) == ""
 
 
+def test_원하는_헤딩의_부제들을_보존한다():
+    text = "# HANDOFF: 테스트\n\n## What Was Done\n\n### Step 1\n- Did step 1\n\n### Step 2\n- Did step 2\n\n## Remaining Work\n\n- Work\n"
+    got = select_headings(latest_section(text))
+    assert "Step 1" in got
+    assert "Did step 1" in got
+    assert "Step 2" in got
+    assert "Did step 2" in got
+    assert "Remaining Work" in got
+
+
+def test_울타리_안의_헤딩처럼_보이는_줄은_검출하지_않는다():
+    text = "# HANDOFF: 테스트\n\n## Uncommitted Changes\n\n```python\n# This looks like a heading\ndef foo():\n    pass\n```\n\nRest of changes\n\n## Remaining Work\n\n- Work\n"
+    got = select_headings(latest_section(text))
+    assert "Rest of changes" in got
+    assert "Remaining Work" in got
+    assert "This looks like a heading" in got
+
+
 def test_파일을_읽어_발췌한다(tmp_path):
     (tmp_path / "HANDOFF.md").write_text(DOC, encoding="utf-8")
     got = read(tmp_path)

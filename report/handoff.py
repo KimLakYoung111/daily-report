@@ -37,14 +37,38 @@ def select_headings(text: str) -> str:
     """WANTED 에 걸리는 헤딩 블록만 이어붙인다."""
     out: list[str] = []
     keeping = False
+    kept_depth = 0  # 선택한 제목의 깊이. 그보다 깊은 부제는 유지.
+    in_fence = False  # 펜스 안인지 추적. 펜스 안의 헤딩 검출 방지.
 
     for line in text.splitlines():
+        # 펜스 토글
+        if line.strip().startswith("```"):
+            in_fence = not in_fence
+            if keeping:
+                out.append(line)
+            continue
+
+        # 펜스 안에서는 헤딩 검출을 건넌다
+        if in_fence:
+            if keeping:
+                out.append(line)
+            continue
+
         m = _ANY_HEADING.match(line)
         if m:
             title = m.group(2).strip().lower()
+            depth = len(m.group(1))  # '#' 개수 = 깊이
+
+            # keeping 중이고 이 제목이 선택한 제목보다 깊으면 부제로 유지
+            if keeping and depth > kept_depth:
+                out.append(line)
+                continue
+
+            # 같거나 얕은 깊이에서 다시 평가
             # '# HANDOFF: ...' 같은 최상위 제목은 블록 경계로만 쓴다
             keeping = any(w in title for w in WANTED)
             if keeping:
+                kept_depth = depth
                 out.append(line)
             continue
         if keeping:
