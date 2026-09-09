@@ -1,4 +1,4 @@
-# HANDOFF: 일일보고 엑셀 생성 자동화 — 8태스크 완료, 푸시됨
+# HANDOFF: 일일보고 엑셀 생성 자동화 — 8태스크 완료, `main` 머지됨
 
 ## Goal
 
@@ -7,12 +7,12 @@
 만들지 않는다 — 그럴듯한 초안이 있으면 근거를 다시 읽지 않게 되고, 그래서 실제로
 작업 6행을 놓친 사고가 이 프로젝트의 출발점이다.
 
-## Current Status: Completed
+## Current Status: Completed — `main`에 머지·푸시됨
 
-계획 8태스크 + 최종 전체 리뷰 후 수정 웨이브 1회까지 끝났고, 브랜치는 푸시됐다.
-머지·PR은 아직 안 했다.
+계획 8태스크 + 최종 전체 리뷰 후 수정 웨이브 1회까지 끝냈고, 2026-09-09에 작업
+브랜치를 `main`에 머지·푸시하고 지웠다. 열린 PR은 없다.
 
-- 브랜치 `claude/claudecode-daily-report-xqj8sp` (merge-base `a73ef33`)
+- `main` = `origin/main` (작업 브랜치 `claude/claudecode-daily-report-xqj8sp` 삭제됨, merge-base `a73ef33`)
 - 테스트 **127 passed** (`python -m pytest -q`)
 - 태스크별 리뷰 8회 전부 클린, 최종 전체 리뷰 → 수정 웨이브 → 범위 한정 재리뷰
   "Safe to merge"
@@ -37,9 +37,10 @@
 | `report/evidence.py` | 근거 마크다운 + 커버리지 사이드카 렌더 | 테스트 + 실행 |
 | `report/daydata.py` | `data/*.yaml` 검증 + `coverage_warnings` | 테스트 |
 | `report/excel.py` | 엑셀·TSV 렌더 (6열 양식) | 테스트 + 워크북 실측 |
-| `collect_evidence.py` | CLI — 근거 수집 | 실행 (2일치) |
-| `build_report.py` | CLI — 보고서 렌더 | 실행 (2일치) |
+| `collect_evidence.py` | CLI — 근거 수집 | 실행 (3일치) |
+| `build_report.py` | CLI — 보고서 렌더 | 실행 (3일치) |
 | `data/2026-09-07.yaml` `data/2026-09-08.yaml` | 보고서 행 데이터 (17행 / 21행) | 회귀 테스트 |
+| `data/2026-09-09.yaml` | 보고서 행 데이터 (18행) — **개발이 아니라 실사용한 첫 날** | 회귀 기준선 없음 (손으로 만든 원본이 없다) |
 
 **도구가 자기 값을 증명한 지점**: 첫 실제 실행에서 손으로 만든 9/08 보고서의 누락을
 잡았다 — `qmeet/front_design_prototype`(시안)의 커밋 `b1a909a` 12:46. 그게 지금
@@ -48,7 +49,7 @@
 
 ### What Was NOT Done
 
-1. **머지·PR 안 함.** 푸시만 됐다.
+1. ~~머지·PR 안 함~~ — **2026-09-09 `main`에 머지·푸시하고 브랜치를 지웠다.**
 2. **최종 리뷰어 제안 3건 보류** — 스펙을 건드려서 사용자 승인 대기 (원장 Ruling 19):
    단일 진입점 `daily.py` / `--scaffold`(골격 생성 — 「행 초안 금지」 결정을 직접
    건드림) / 사이드카를 추적 대상 `data/`로 이동.
@@ -111,13 +112,11 @@
 
 ## Remaining Work
 
-1. **머지 또는 PR 결정.** 브랜치는 푸시됐고 `main`은 뒤처진 커밋이 0이다.
-   - 로컬 머지: `git checkout main && git merge claude/claudecode-daily-report-xqj8sp`
-   - PR: `gh pr create --base main`
+1. ~~머지 또는 PR 결정~~ — **완료(2026-09-09).** `main`에 머지·푸시, 브랜치 삭제.
 2. **Ruling 19의 3건 결정** (원장 532행 부근). `--scaffold`는 스펙 「설계 결정 4」를
    건드리므로 진행 시 `docs/superpowers/specs/...-design.md`를 함께 고칠 것.
-3. **`output/`의 엑셀 두 개가 아직 열려 있다.** 닫고
-   `python build_report.py`를 다시 돌리면 `_` 접두사 없이 정상 파일명으로 나온다.
+3. ~~`output/`의 엑셀 두 개가 아직 열려 있다~~ — **해결(2026-09-09).** 닫고 다시
+   돌려 정상 파일명으로 나왔고, `_` 접두사 잔재 파일 2개도 지웠다.
 4. **모듈 진행률을 사람이 갱신할 것.** `config.yaml`의
    `categories[].progress` — `백엔드 공수산정 85%` / `프론트 공수산정 20%`가 9/07
    시트에서 이월된 값 그대로다. 자동 갱신되지 않는다(설계 결정 3).
@@ -147,19 +146,25 @@
 # 전체 테스트 (127 passed 여야 정상)
 python -m pytest -q
 
-# 파이프라인 실행 — 날짜별 경고 1건씩이 정상이다
+# 파이프라인 실행 — 무인자 build_report 는 data/ 전체(3일치)를 돈다.
+# 아래 경고 4건이 정상이고 전부 기각 근거가 있다. 그 밖의 저장소가 나오면
+# 실제 누락이다 — 근거 파일을 읽고 행을 추가할 것.
+python collect_evidence.py 2026.9.9
 python collect_evidence.py 2026.9.8
 python collect_evidence.py 2026.9.7
 python build_report.py
-#   9/07 → golfzone/admin       (/compact 프롬프트, 기각 가능)
-#   9/08 → daily-report/blank-app (도구 자체 저장소, Ruling 9)
-#   다른 저장소가 경고에 나오면 실제 누락이다 — 근거 파일을 읽고 행을 추가할 것
+#   9/07 → golfzone/admin          (/compact 프롬프트, Gotcha 4)
+#   9/08 → daily-report/blank-app  (도구 자체 저장소, Ruling 9)
+#   9/09 → daily-report/blank-app  (같은 이유 · 2026-09-09 사용자 결정으로 제외)
+#   9/09 → qmeet/qmeet-dev-ssh     (커밋 0·이벤트 0. 활동으로 잡힌 미추적 PNG 9개가
+#                                   전부 5~6월 파일이다 — Gotcha 11 의 실제 사례)
 
-# 워크북 검증 (17행 / 21행, B1 에 실제 개행)
+# 워크북 검증 (17행 / 21행 / 18행, B1 에 실제 개행)
 python -c "import sys; sys.stdout.reconfigure(encoding='utf-8'); \
 from openpyxl import load_workbook; \
 [print(f, load_workbook(f).active.max_row, repr(load_workbook(f).active.cell(1,2).value)) \
- for f in ('output/일일보고-2026-09-07.xlsx','output/일일보고-2026-09-08.xlsx')]"
+ for f in ('output/일일보고-2026-09-07.xlsx','output/일일보고-2026-09-08.xlsx',
+           'output/일일보고-2026-09-09.xlsx')]"
 
 # 경로 경계 술어 (load-bearing — 이게 깨지면 구분이 사라진다)
 python -c "from report.config import is_under; \
@@ -175,5 +180,5 @@ print(is_under('qmeet/front','qmeet/front_design_prototype'), \
                           커밋하지 않았다.
 ```
 
-이 세션의 모든 작업물은 커밋됨 (`a73ef33..HEAD`, 17커밋). `output/`은 `.gitignore`
+이 세션의 모든 작업물은 커밋됨 (`a73ef33..6faddd6`, 18커밋 — 핸드오프 커밋 포함). `output/`은 `.gitignore`
 대상이고 `data/`는 추적 대상(소스 오브 트루스)이다.

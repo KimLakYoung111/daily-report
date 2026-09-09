@@ -1,0 +1,92 @@
+# 2026-09-09 일일보고 데이터.
+# 근거: output/evidence/2026-09-09.md (커밋 46건·미커밋·인계 문서·세션)
+#
+# 보고에서 뺀 것 (커버리지 경고 2건은 기각 처리):
+#   - daily-report/blank-app : 이 도구 자체 저장소. 사용자 결정으로 제외.
+#   - qmeet/qmeet-dev-ssh    : 커밋 0·세션 이벤트 0. 미추적 PNG 9개는 전부
+#                              5~6월 파일이라 오늘 활동이 아니다.
+date: 2026.9.09
+rows:
+  - category: 백엔드 공수산정
+    default_location: { repo: qmeet/backend2, branch: feature/ai_effortEstimate_20260901 }
+    items:
+      - task: 로컬 개발서버·가짜 AI 서버 기동 확인
+        progress: 100%
+        note: 커밋 없음 — 기동 스크립트·로그만 (run-local-detached.cmd)
+
+  - category: 프론트 공수산정
+    default_location: { repo: qmeet/front, branch: feature-ai-effortEsttimate_20260901 }
+    items:
+      - task: 로컬 개발서버 기동 · 진입 화면 시안 대조
+        progress: 100%
+        note: 커밋 없음 — registration-type 시안 확인
+
+  - category: AI 서버 공수산정
+    default_location: { repo: qmeet/qmeet_ai, branch: feature/orchestrator }
+    items:
+      - task: 이미지만 붙여넣은 PPTX 기획서 프리스캔 판별
+        progress: 100%
+        note: 과금 전 단계에서 판별 · 미커밋(ppt_extract.py·테스트)
+
+  - category: 시안
+    default_location: { repo: qmeet/front_design_prototype, branch: main }
+    items:
+      - task: 프로젝트 등록 이후 화면 4종 신설
+        progress: 100%
+        note: qm-meter·qm-note 컴포넌트 등록
+      - task: 파트너 선정 적합도 표시 · 특장점 요약 강조 · 참여인력 막대 정리
+        progress: 100%
+      - task: 접근성 3건 반영
+        progress: 100%
+        note: 터치 타깃 44px · 포커스 링 · 로그인 레이블
+      - task: 프로젝트 등록 진입 시안 4종 + 배너 시안 4종
+        progress: 100%
+        note: registration-type O·P·Q·R · qm-card[promo]
+      - task: 엔지니어 상세 화면 정리
+        progress: 100%
+        note: 판정 배너·검증 범위 박스 제거, 장점 요약 타이틀 추가
+      - task: 파트너 선정·엔지니어 상세 비교 시안 5종
+        progress: 100%
+        note: 채택 판단 대기 — 추천 조합은 파트너 E + 엔지니어 D
+      - task: 샘플 공수산정 플로우 신설
+        progress: 100%
+        note: 배너 → 업로드 → 로딩 → 결과 연결
+      - task: 샘플 재생 20초로 단축 · 파일명 통일
+        progress: 100%
+        note: 연동 12파일 함께 수정 · 실측 20.6초
+
+  - category: 자동화
+    default_location: { repo: e2etest/playwright_base, branch: main }
+    items:
+      - task: 테스트 리포트 보강 4종
+        progress: 100%
+        note: Marker 집계표 · 재시도 목록 · 느린 테스트 Top5 · 인쇄 CSS
+      - task: 실행 메타 수집 추가 (result.json 1.0 → 1.1)
+        progress: 100%
+        note: 버전·git·실행자·명령·워커 수 · 기존 15필드 유지
+      - task: 코드리뷰 지적 12건 반영
+        progress: 100%
+        note: 회귀 테스트 37 → 81개
+      - task: Base → Q-Meet 저장소 동기화
+        progress: 100%
+        note: 공통 모듈 바이트 일치 확인 · 게이트 4종 통과
+        locations:
+          - { repo: e2etest/qmeet, branch: main }
+      - task: 고객사 실행가이드·런북 문서 작성
+        progress: 80%
+        note: 미커밋 — 설치·실행·가이드 3종 + 런북
+        locations:
+          - { repo: e2etest/playwright_base, branch: main }
+          - { repo: e2etest/qmeet, branch: main }
+      - task: CI 요약 콘솔 한글 깨짐 수정
+        progress: 100%
+        note: 미커밋 — 회귀 테스트 포함
+
+  - category: 교육
+    default_location:
+      repo: leadwalk_study/2026/second-half-automation-training/repos
+      branch: git 아님 · 교육생 5명 폴더
+    items:
+      - task: 4주차 과제 피드백 문구 정리·전달
+        progress: 100%
+        note: 교육생 2명 과제 재확인
